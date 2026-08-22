@@ -1,0 +1,245 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <title>拼豆工具 · 大图模式</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand-block">
+      <p class="eyebrow">PIXEL BEAD DESIGN</p>
+      <div class="title-row">
+        <h1>拼豆工具 · 大图模式</h1>
+        <span class="header-tag">01 / 大图模式</span>
+      </div>
+    </div>
+    <div class="top-actions">
+      <a class="button mode-switch" href="./index.html" style="background:var(--cyan);color:#04201c;">
+        <span class="mode-switch-label">MODE / 1×1</span>
+        <strong>普通模式</strong>
+        <span class="mode-switch-icon" aria-hidden="true">↔</span>
+      </a>
+      <button id="helpBtn" class="button ghost" aria-expanded="false">使用说明</button>
+    </div>
+  </header>
+
+  <main>
+    <section id="helpPanel" class="help-panel" hidden>
+      <strong>推荐流程：</strong>上传图片 → 拖动/缩放裁剪 → 选择画板布局（默认 4×4，共 96×96）→ 生成大图 → 点击总览中的分块进入逐格修正 → 导出整幅图纸。<br>
+      每个分块都是独立的 24×24 图案，可分别用画笔修正；总览缩略图会实时刷新。
+    </section>
+
+    <div class="source-stage" style="display:grid;grid-template-columns:1fr;gap:20px;">
+    <div style="display:grid;grid-template-columns:1fr;gap:20px;" id="topGrid">
+      <article class="panel source-panel">
+        <div class="panel-heading">
+          <div>
+            <span class="step">01</span>
+            <h2>原图与裁剪</h2>
+          </div>
+          <span id="sourceMeta" class="meta">尚未选择图片</span>
+        </div>
+
+        <div class="crop-flex">
+          <div class="crop-col">
+            <label id="dropZone" class="drop-zone">
+              <input id="imageInput" type="file" accept="image/*">
+              <span class="drop-icon">＋</span>
+              <strong>点击或拖入图片</strong>
+              <small>PNG、JPG、WEBP；也可以直接粘贴截图</small>
+            </label>
+
+            <div id="cropWrap" class="crop-wrap" hidden>
+              <canvas id="sourceCanvas" width="560" height="560" aria-label="原图裁剪预览"></canvas>
+              <div class="crop-frame" aria-hidden="true"></div>
+              <span class="crop-tip">拖动定位 · 滚轮缩放</span>
+              <button id="removeImageBtn" class="remove-image" type="button" aria-label="移除当前图片" title="移除当前图片">×</button>
+            </div>
+          </div>
+
+          <div class="control-grid">
+            <label class="control wide">
+              <span>裁剪缩放 <output id="zoomOut">100%</output></span>
+              <input id="zoomRange" type="range" min="100" max="400" value="100">
+            </label>
+            <button id="resetCropBtn" class="button secondary">重置位置</button>
+            <button id="fitSubjectBtn" class="button secondary" title="缩小到完整显示图片，空白区域会自动填充">完整显示</button>
+
+            <label class="control">
+              <span>转换方式</span>
+              <select id="modeSelect">
+                <option value="hybrid">均衡（偏柔和）</option>
+                <option value="dominant" selected>主色优先（推荐，更清晰）</option>
+                <option value="average">平均色优先</option>
+              </select>
+            </label>
+            <label class="control">
+              <span>对比度 <output id="contrastOut">0</output></span>
+              <input id="contrastRange" type="range" min="-30" max="30" value="0">
+            </label>
+            <label class="control">
+              <span>饱和度 <output id="saturationOut">0</output></span>
+              <input id="saturationRange" type="range" min="-50" max="50" value="0">
+            </label>
+
+            <div class="control wide">
+              <span class="board-layout-label">画板布局（宽 × 高）</span>
+              <div class="board-layout-row">
+                <span>每行
+                  <select id="layoutColsSelect">
+                    <option value="1">1张</option><option value="2">2张</option>
+                    <option value="3">3张</option><option value="4" selected>4张</option>
+                    <option value="5">5张</option><option value="6">6张</option>
+                  </select>
+                </span>
+                <span>×</span>
+                <span>行数
+                  <select id="layoutRowsSelect">
+                    <option value="1">1行</option><option value="2">2行</option>
+                    <option value="3">3行</option><option value="4" selected>4行</option>
+                    <option value="5">5行</option><option value="6">6行</option>
+                  </select>
+                </span>
+              </div>
+            </div>
+            <button id="generateBtn" class="button primary full" disabled>生成大图</button>
+          </div>
+        </div>
+      </article>
+
+      <article class="panel overview-grid-card">
+        <div class="panel-heading">
+          <div>
+            <span class="step">02</span>
+            <h2>大图总览</h2>
+          </div>
+          <span id="overviewMeta" class="meta">96×96 · 4×4画板 · 16张</span>
+        </div>
+        <div class="overview-grid-wrap">
+          <div id="blockGrid" class="block-grid"></div>
+        </div>
+        <p class="overview-hint">点击分块可直接跳转到下方逐格修正 · 灰色间隔仅用于预览</p>
+        <button id="previewBigBtn" class="button secondary full" style="margin-top:14px;">预览完整大图</button>
+      </article>
+    </div>
+    </div>
+
+    <section class="workbench-row">
+      <article class="panel editor-panel">
+        <div class="panel-heading">
+          <div>
+            <span class="step">03</span>
+            <h2>逐格修正 <span id="activeBlockLabel" class="meta" style="font-weight:400;">（未选择分块）</span></h2>
+          </div>
+          <span id="cellInfo" class="meta">R— C—</span>
+        </div>
+
+        <div class="toolbar" role="toolbar" aria-label="绘图工具">
+          <button class="tool active" data-tool="paint" title="画笔">画笔</button>
+          <button class="tool" data-tool="fill" title="填充相邻的同色区域">填充</button>
+          <button class="tool" data-tool="picker" title="从网格取色">取色</button>
+          <span class="toolbar-sep"></span>
+          <button id="undoBtn" class="tool" disabled>撤销</button>
+          <button id="redoBtn" class="tool" disabled>重做</button>
+          <label class="check"><input id="showNumbers" type="checkbox" checked>显示编号</label>
+          <label class="check"><input id="showGrid" type="checkbox" checked>显示网格</label>
+          <label class="check"><input id="showOverview" type="checkbox" checked>显示预览</label>
+        </div>
+
+        <div id="editorBoardLayout" class="editor-board-layout">
+          <aside id="overviewCard" class="overview-card" aria-labelledby="overviewTitle">
+            <strong id="overviewTitle">分块预览</strong>
+            <canvas id="overviewCanvas" width="192" height="192" aria-label="当前分块24乘24像素画的缩小预览"></canvas>
+          </aside>
+
+          <div class="editor-canvas-wrap">
+            <div class="grid-coordinate-frame">
+              <div class="coord-corner corner-tl" aria-hidden="true"></div>
+              <div id="coordTop" class="coord-axis coord-top" aria-label="上方列坐标"></div>
+              <div class="coord-corner corner-tr" aria-hidden="true"></div>
+              <div id="coordLeft" class="coord-axis coord-left" aria-label="左侧行坐标"></div>
+              <canvas id="gridCanvas" width="768" height="768" aria-label="24乘24像素编辑网格"></canvas>
+              <div id="coordRight" class="coord-axis coord-right" aria-label="右侧行坐标"></div>
+              <div class="coord-corner corner-bl" aria-hidden="true"></div>
+              <div id="coordBottom" class="coord-axis coord-bottom" aria-label="下方列坐标"></div>
+              <div class="coord-corner corner-br" aria-hidden="true"></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="replace-row">
+          <label>把 <select id="replaceFrom"></select></label>
+          <span>全部替换为当前色（仅当前分块）</span>
+          <button id="replaceBtn" class="button secondary">执行替换</button>
+          <span id="selectedBadge" class="selected-badge">当前色 01</span>
+        </div>
+      </article>
+
+      <article class="panel palette-panel">
+        <div class="panel-heading">
+          <div>
+            <span class="step">04</span>
+            <h2>颜色色板</h2>
+          </div>
+          <span class="meta">切换会同步应用到所有分块</span>
+        </div>
+        
+        <div class="custom-color-row">
+          <input id="customHexInput" type="text" placeholder="#RRGGBB 自定义颜色" maxlength="7">
+          <button id="addCustomColorBtn" class="button secondary">添加</button>
+        </div>
+        <div id="palette" class="palette" role="listbox" aria-label="颜色色板"></div>
+      </article>
+    </section>
+
+    <section class="panel export-panel">
+      <div class="panel-heading">
+        <div>
+          <span class="step">05</span>
+          <h2>导出结果</h2>
+        </div>
+        <label class="name-field">文件名 <input id="fileName" value="bead_pattern_large" maxlength="40"></label>
+      </div>
+      <div class="export-grid">
+        <button id="exportPreviewBtn" class="export-card"><strong>PNG 预览</strong><span>整幅大图最近邻放大，方便查看成品</span></button>
+        <button id="exportTotalBtn" class="export-card"><strong>导出图纸</strong><span>整幅格内编号＋完整色板图例，并加入历史</span></button>
+        <button id="saveProjectBtn" class="export-card"><strong>保存工程 JSON</strong><span>保存全部分块和设置，方便跨浏览器继续修改</span></button>
+      </div>
+      <div class="export-history-block">
+        <div class="export-history-heading">
+          <div>
+            <h3>导出历史</h3>
+            <p>图纸导出成功后自动保存工程快照；点击记录即可载入图纸继续修改。</p>
+          </div>
+          <div class="export-history-actions">
+            <span id="historyCount">0 份</span>
+            <button id="clearHistoryBtn" type="button" disabled>清空历史</button>
+          </div>
+        </div>
+        <div id="exportHistory" class="export-history" aria-live="polite"></div>
+      </div>
+      <p id="status" class="status" role="status">工具已就绪。上传图片开始。</p>
+    </section>
+  </main>
+
+  <footer class="site-footer">拼豆工具 · <button id="shareLinkBtn" class="share-link-btn" type="button">🔗 复制页面链接以分享到其他设备</button></footer>
+
+  <div id="bigPreviewOverlay" class="big-preview-overlay" hidden>
+    <div class="big-preview-card">
+      <div class="big-preview-head">
+        <strong>完整大图预览</strong>
+        <button id="bigPreviewCloseBtn" class="remove-image" type="button" aria-label="关闭">×</button>
+      </div>
+      <div class="big-preview-canvas-wrap">
+        <canvas id="bigPreviewCanvas"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+  <script src="mosaic.js"></script>
+</body>
+</html>
